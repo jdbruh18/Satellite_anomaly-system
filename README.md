@@ -223,3 +223,91 @@ pytest
 - Start the full Docker Compose stack and watch logs to ensure services start correctly and the frontend communicates with the API. (Confirm when ready — I'll bring the stack up and share logs.)
 
 
+## Download, Run, Test, and Update (for contributors)
+
+Follow these concise steps to clone the repo, run the system locally, run tests, and contribute updates.
+
+- Clone and enter the repo:
+
+```bash
+git clone https://github.com/jdbruh18/Satellite_anomaly-system.git
+cd Satellite_anomaly-system
+```
+
+- Create a branch for your change:
+
+```bash
+git checkout -b feat/your-change
+```
+
+- Local Python development (Windows):
+
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
+pytest
+```
+
+- Local Python development (macOS / Linux):
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+pytest
+```
+
+- Run the full stack with Docker Compose (recommended):
+
+```bash
+docker compose up --build
+```
+
+Service endpoints (after compose):
+
+- API: http://localhost:8000/api/v1
+- Engine (scoring): http://localhost:8100/score
+- Frontend: http://localhost:3000
+
+- Quick health checks (host):
+
+```powershell
+Invoke-WebRequest http://localhost:8000/api/v1/health
+Invoke-WebRequest http://localhost:8100/health
+```
+
+- Regenerate the ONNX surrogate model (if you change the training script or model):
+
+On Windows (PowerShell):
+```powershell
+cmd /c "set PYTHONPATH=.&& python scripts/export_model_onnx.py"
+```
+
+On macOS / Linux:
+```bash
+PYTHONPATH=. python scripts/export_model_onnx.py
+```
+
+- Commit and push updates (recommended workflow):
+
+```bash
+# make changes
+git add -A
+git commit -m "feat: concise summary of change"
+git push origin feat/your-change
+# open a Pull Request on GitHub and describe the change
+```
+
+- Updating the exported model artifact:
+
+1. Regenerate `models/surrogate_score.onnx` using `scripts/export_model_onnx.py`.
+2. Run tests: `pytest`.
+3. Commit the new model file and any code changes and push the branch.
+4. Create a PR and request review; include model provenance and the export command used.
+
+- CI / Tests: add a GitHub Actions workflow to run `pytest` and optionally rebuild the Docker images on PRs. Recommended file: `.github/workflows/ci.yml`.
+
+If you want, I can add a ready-to-use GitHub Actions workflow that runs the tests and lints on each push or PR.
+
+
