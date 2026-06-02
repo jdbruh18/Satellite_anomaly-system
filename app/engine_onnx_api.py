@@ -10,6 +10,16 @@ from app.simulator.generator import TelemetrySimulator
 app = FastAPI(title="ONNX Anomaly Engine")
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": "ONNX Anomaly Engine"}
+
+
+@app.get("/")
+async def root():
+    return {"message": "ONNX Anomaly Engine"}
+
+
 def _build_profiles_from_simulator(samples: int = 500, seed: Optional[int] = None):
     sim = TelemetrySimulator(seed=seed)
     points = [sim.generate_point(satellite_id="SAT-ONNX") for _ in range(samples)]
