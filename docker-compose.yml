@@ -1,0 +1,93 @@
+services:
+  api:
+    build: .
+    container_name: telemetry-api
+    restart: unless-stopped
+    environment:
+      PYTHONPATH: /app
+      APP_NAME: Satellite Telemetry Anomaly System
+      API_PREFIX: /api/v1
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+asyncpg://telemetry:telemetry@postgres:5432/telemetry
+      ANOMALY_CONTAMINATION: 0.05
+      ANOMALY_MIN_TRAINING_SAMPLES: 30
+      ANOMALY_WINDOW_SIZE: 500
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - telemetry_network
+
+  anomaly-engine:
+    build: .
+    container_name: telemetry-anomaly-engine
+    restart: unless-stopped
+    environment:
+      PYTHONPATH: /app
+      APP_NAME: Satellite Anomaly Engine (ONNX)
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+asyncpg://telemetry:telemetry@postgres:5432/telemetry
+    command: ["uvicorn", "app.engine_onnx_api:app", "--host", "0.0.0.0", "--port", "8100", "--workers", "2"]
+    ports:
+      - "8100:8100"
+    depends_on:
+      - postgres
+    networks:
+      - telemetry_network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: telemetry-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: telemetry
+      POSTGRES_PASSWORD: telemetry
+      POSTGRES_DB: telemetry
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U telemetry -d telemetry"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - telemetry_network
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE: http://api:8000/api/v1
+    container_name: telemetry-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - telemetry_network
+
+networks:
+  telemetry_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
